@@ -1,0 +1,29 @@
+{
+  "name": "simplepubsub-server",
+  "version": "1.0.0",
+  "description": "Simple Pub/Sub via websockets",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "ws",
+    "websocket",
+    "websockets",
+    "pub",
+    "sub",
+    "publish",
+    "subscribe",
+    "message",
+    "passing",
+    "relay",
+    "messaging"
+  ],
+  "author": "jjv360",
+  "license": "ISC",
+  "dependencies": {
+    "terminal-kit": "^1.17.12",
+    "ws": "^5.2.2"
+  }
+}
