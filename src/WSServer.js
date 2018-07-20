@@ -120,7 +120,7 @@ module.exports = class WSServer {
     Log.debug("Client posted message via HTTP to channel " + req.body.channel)
     var payload = JSON.stringify({ channel: req.body.channel, data: req.body.data })
     for (var client of this.connections)
-      if (client.channels.includes(msg.channel))
+      if (client.channels.includes(req.body.channel))
         client.send(payload)
 
     // Return success
