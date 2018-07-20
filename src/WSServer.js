@@ -2,7 +2,10 @@
 // Handled WebSocket connections
 
 const Log = require("./Log").wrap("WSServer")
+const http = require("http")
+const express = require("express")
 const WebSocket = require("ws")
+const bodyParser = require('body-parser');
 
 module.exports = class WSServer {
 
@@ -11,14 +14,28 @@ module.exports = class WSServer {
     // Stores all active connections
     this.connections = []
 
-    // Create websocket server
-    Log.info("Starting server on port " + port)
-    this.wss = new WebSocket.Server({ port })
+    // Create Express server
+    this.express = express()
+    this.express.use(bodyParser.json());
 
-    // Add event listeners
+    // Create HTTP server
+    this.httpServer = http.createServer(this.express);
+
+    // Create websocket server
+    this.wss = new WebSocket.Server({ server: this.httpServer })
+
+    // Add WebSocket event listeners
     this.wss.on("connection", this.onConnection.bind(this))
     this.wss.on("error", err => Log.error("Backend socket error: " + (err.message || err)))
-    this.wss.on("listening", e => Log.info("Server is up"))
+
+    // Add a post message handler
+    this.express.post("/message", this.onHTTPMessage.bind(this))
+
+    // Start listening
+    Log.info("Starting server on port " + port)
+    this.httpServer.listen(port, e => {
+      Log.info("Server is up")
+    })
 
   }
 
@@ -93,6 +110,23 @@ module.exports = class WSServer {
       Log.warning("Client sent unknown action " + msg.action)
 
     }
+
+  }
+
+  /** Called when the HTTP POST /message endpoint is called */
+  onHTTPMessage(req, res) {
+
+    // Post to all listeners
+    Log.debug("Client posted message via HTTP to channel " + req.body.channel)
+    var payload = JSON.stringify({ channel: req.body.channel, data: req.body.data })
+    for (var client of this.connections)
+      if (client.channels.includes(msg.channel))
+        client.send(payload)
+
+    // Return success
+    res.json({
+      success: true
+    })
 
   }
 
