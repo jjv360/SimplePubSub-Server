@@ -14,6 +14,9 @@ module.exports = class WSServer {
     // Stores all active connections
     this.connections = []
 
+    // Stores all buffers used by the HTTP API
+    this.buffers = []
+
     // Create Express server
     this.express = express()
     this.express.use(bodyParser.json());
@@ -31,11 +34,37 @@ module.exports = class WSServer {
     // Add a post message handler
     this.express.post("/message", this.onHTTPMessage.bind(this))
 
+    // Add a buffer fetch handler
+    this.express.post("/fetch", this.onHTTPFetch.bind(this))
+
     // Start listening
     Log.info("Starting server on port " + port)
     this.httpServer.listen(port, e => {
       Log.info("Server is up")
     })
+
+    // Send ping to all clients every 5 seconds
+    this.pingTimer = setInterval(this.sendPings.bind(this), 5000)
+
+  }
+
+  /** Sends a ping to all clients */
+  sendPings() {
+
+    try {
+
+      // Send a ping to all WebSocket connections
+      for (var conn of this.connections)
+        conn.ping()
+
+      // Remove all buffers which are old
+      for (var i = 0 ; i < this.buffers.length ; i++)
+        if (this.buffers[i].lastActive + 1000 * 60 * 5 < Date.now())
+          this.buffers.splice(i--, 1)
+
+    } catch (e) {
+      Log.warning("Unable to send pings! " + e.message)
+    }
 
   }
 
@@ -99,10 +128,7 @@ module.exports = class WSServer {
 
       // They want to post a message on a channel, send to all interested connections
       Log.debug("Client posted message to channel " + msg.channel)
-      var payload = JSON.stringify({ channel: msg.channel, data: msg.data })
-      for (var client of this.connections)
-        if (client != ws && client.channels.includes(msg.channel))
-          client.send(payload)
+      this.gotMessage(msg.channel, msg.data)
 
     } else {
 
@@ -113,20 +139,75 @@ module.exports = class WSServer {
 
   }
 
+  /** Called when a message is received on a channel */
+  gotMessage(channel, data) {
+
+    // Send to WebSocket clients
+    var payload = JSON.stringify({ channel: channel, data: data })
+    for (var client of this.connections)
+      if (client.channels.includes(channel))
+        client.send(payload)
+
+    // Append to buffers
+    for (var buffer of this.buffers) {
+
+      // Check if listening to this channel
+      if (!buffer.channels.includes(channel))
+        continue
+
+      // Ensure we don't run out of memory, limit buffer size
+      if (buffer.messages.length > 1024 * 4)
+        continue
+
+      // Append to buffer
+      buffer.messages.push(payload)
+
+    }
+
+  }
+
   /** Called when the HTTP POST /message endpoint is called */
   onHTTPMessage(req, res) {
 
     // Post to all listeners
     Log.debug("Client posted message via HTTP to channel " + req.body.channel)
-    var payload = JSON.stringify({ channel: req.body.channel, data: req.body.data })
-    for (var client of this.connections)
-      if (client.channels.includes(req.body.channel))
-        client.send(payload)
+    this.gotMessage(req.body.channel, req.body.data)
 
     // Return success
     res.json({
       success: true
     })
+
+  }
+
+  /** Called when the HTTP POST /fetch endpoint is called. */
+  onHTTPFetch(req, res) {
+
+    // Get buffer
+    var buffer = this.buffers.find(b => b.id == req.body.id)
+
+    // Create buffer if necessary
+    if (!buffer) {
+
+      // Create it
+      buffer = { id: req.body.id, lastActive: 0, channels: [], messages: [] }
+      Log.debug("Created HTTP buffer " + buffer.id)
+      this.buffers.push(buffer)
+
+    }
+
+    // Update list of listening channels
+    buffer.channels = req.body.channels || buffer.channels
+
+    // Return list of messages
+    res.json({
+      success: true,
+      messages: buffer.messages
+    })
+
+    // Empty out messages and update last active date
+    buffer.messages = []
+    buffer.lastActive = Date.now()
 
   }
 
