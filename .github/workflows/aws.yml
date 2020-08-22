@@ -54,7 +54,7 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ydangleapps
+        ECR_REPOSITORY: pubsub
         IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
@@ -76,6 +76,6 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: sample-app-service
+        service: pubsub
         cluster: default
         wait-for-service-stability: true
