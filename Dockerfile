@@ -1,8 +1,8 @@
 #
 # Dockerfile for the SimplePubSub server
 
-# Base our build on Node 8 LTS
-FROM node:8
+# Base our build on Node 12 LTS
+FROM node:12
 
 # Create app directory
 WORKDIR /usr/src/app
