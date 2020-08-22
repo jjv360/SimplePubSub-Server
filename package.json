@@ -1,6 +1,6 @@
 {
   "name": "simplepubsub-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Simple Pub/Sub via websockets",
   "main": "src/index.js",
   "scripts": {
