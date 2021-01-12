@@ -11,7 +11,7 @@ This server provides a simple WebSocket interface for subscribing to channels, a
 $ docker build . -t pubsub
 
 # Run the image
-$ docker run -d -p :8089:8089 --name pubsub --rm pubsub
+$ docker run -d -p :8089:8089 --name pubsub --rm pubsub --restart=always
 ```
 
 # Messaging API
